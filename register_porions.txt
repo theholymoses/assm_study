@@ -1,0 +1,10 @@
+movl - moves data a word at a time.
+movb - moves data a byte at a time.
+
+But you can't use a full register with movb, you have to use a portion of a register instead.
+
+%eax - word
+	%ax - least significant half of %eax.
+		%al - least significant half of %ax.
+		%ah - most significant half of %ax.
+
