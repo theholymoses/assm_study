@@ -1,4 +1,4 @@
-# PURPOSE:
+#	PURPOSE:
 #		Simple program that exits and returns a status code back to the Linux kernel.
 #
 #	INPUT:
@@ -18,10 +18,15 @@
 .globl _start
 
 _start:
-	movl $1, %eax						# 1 is the linux kernel command number (system call) for exiting a program
-	movl $0, %ebx						# 0 is the status number we will return to the operating system
+	#	move 1 (system call number for exit) into "eax"
+	#	move 0 return status to "ebx"
+	movl $1, %eax
+	movl $0, %ebx
 
 	# ^ immediate addressing mode is used
 
-	int $0x80								# interrupt signal
+	int $0x80
+
+#	System call number should be contained in the %eax register. Return status - in the %ebx register.
+#	When 0x80 interrupt signal is sent, system runs the system call specified in an %eax register.
 
