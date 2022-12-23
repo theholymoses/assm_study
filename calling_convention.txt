@@ -1,0 +1,107 @@
+**********
+Functions are composed of several parts:
+
+1) function label
+2) function parameters
+3) local variables
+4) static variables
+5) global variables
+6) return address
+7) retrun value
+
+%esp - holds a pointer to current top of the stack
+pushl - pushes either a register or memory value onto the stack, %esp get subtracted by 4
+popl - puts previous top of the stack onto the register you specified and adds 4 tp %esp
+
+each instruction pushl and popl take one operand - register
+
+movl (%esp), %eax - moves value at a top of the stack, without removing it(indirect addressing mode)
+
+movl 4(%esp), %eax - moves value right below the stack, without removing it(base pointer addressing mode)
+
+**********
+C calling convention
+
+1) Push all of the parameters for a function in reverse order
+2) Issue a 'call' instruction
+
+call instruction does two things:
+1) Pushes address for a next instruction, which is the return address, onto the stack
+2) Modifies %eip(instruction pointer) to point to the start of the function
+
+At the time when function starts stack looks something like this
+
+parameter N
+...
+parameter 2
+parameter 1
+return address <--- (%esp points to the top of the stack)
+
+Now, the function itself has some work to do.
+1) Save the current base pointer register, %ebp, by doing pushl %ebp
+	The base pointer(%ebp) is a special register used for accessing function parameters and local variables.
+2) Copy the stack pointer to %ebp, by doing movl %esp, %ebp
+	This allows you to access the function parameters as fixed indexes from the base pointer.
+	You may think that you can use stack pointer for that(%esp), but you may do other things with stack such as pushing argumentsto other functions.
+
+	Copying the stack pointer into the base pointer at the beginning of a function allows you to always know where your parameters are, even when
+		you may be pushing things on and off the stack.
+	So, %ebp is a more or less a constant reference to the stack frame.
+	Stack frame consists of all the stack variables used within a function, including parameters, local variables, and the return address.
+
+	At this point stack looks like this:
+
+
+		parameter N     <--- N*4+4 (%ebp)
+		...
+		parameter 2     <--- 12(%ebp)
+		parameter 1     <--- 8(%ebp)
+		return address  <--- 4(%ebp)
+		Old %ebp        <--- (%esp) and (%ebp)
+
+3) Reserve the space on the stack for any local variables it needs. It is done by moving stack pointer.
+	If you need two words of memory to run a function, you can do something like this:
+		subl $8, %esp
+	This way we can use the stack for variable storage without worrying about clobbering them with pushes that we may makefor function calls.
+	Also, since it is allocated on the stack frame for the function call, the variable will only be alive during this function.
+	When we return, the stack frame will go away, and so will these variables.
+
+
+	The stack now looks like this:
+
+		parameter N      <--- N*4+4 (%ebp)
+		...
+		parameter 2      <--- 12(%ebp)
+		parameter 1      <--- 8(%ebp)
+		return address   <--- 4(%ebp)
+		Old %ebp         <--- (%ebp)
+		local variable 1 <--- -4(%ebp)
+		local variable 2 <--- -8(%ebp) and (%esp)
+
+**********
+When a function is done executing it does three things:
+1) Stores it's return value in %eax
+2) Resets the stack to what it was when it was called
+3) Returns control back to whatever it was called from. This is done using the 'ret' function.
+
+ret function pops value at the top of the stack and sets instruction pointer, %eip, to that value.
+
+So, before function return control, it must restore the previous stack frame. Without doing this, 'ret' wouldn't work, since in out current stack frame
+	the return address is not at the top of the stack.
+Therefore before we return, we have to reset the stack pointer %esp and base pointer %ebp to what they were before function began.
+This is done like this:
+
+	movl %ebp, %esp
+	popl %ebp
+	ret
+
+At this point all local variables are disposed.
+The calling code also needsto pop off all of the parameters it pushed onto the stack in order to get the stack pointer back where it was.
+This can also be done by adding 4 * number_of_parameters to %esp using 'addl'.
+
+**********
+When you call a function you should assume that everything currently in your registers to be wiped out.
+The only register that is guaranteedto be left with the valu it started with is %ebp.
+If there are registers you want to save before calling a function, you need to save them by pushing them onto the stack,
+	before pushing there all of the function parameters.
+You can then pop them back off in the reverse order after popping the parameters.
